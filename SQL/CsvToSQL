@@ -1,0 +1,90 @@
+# Código de C# en proyecto de consola de .net para hacer trasvase de datos de csv a tablas de SQL
+
+using System;
+using System.Data;
+using System.Globalization;
+using System.IO;
+using Microsoft.Data.SqlClient;
+
+class Program
+{
+    static void Main()
+    {
+        // Ruta del archivo CSV
+        string csvFilePath = @"C:\Users\ialdabaldetreku\Documents\TFM\Data\archive (1)\4E.csv";
+
+        // Cadena de conexión a SQL Server
+        string connectionString = "Server=005-ialdabal\\IÑAKIDB;Database=TFM;Trusted_Connection=True; TrustServerCertificate=True";
+
+        try
+        {
+            // Crear una tabla en memoria para almacenar datos temporalmente
+            DataTable dataTable = new DataTable();
+            dataTable.Columns.Add("V_in", typeof(double));
+            dataTable.Columns.Add("Measured_RPM", typeof(double));
+            dataTable.Columns.Add("Vibration_1", typeof(double));
+            dataTable.Columns.Add("Vibration_2", typeof(double));
+            dataTable.Columns.Add("Vibration_3", typeof(double));
+
+            using (var reader = new StreamReader(csvFilePath))
+            {
+                // Ignorar la primera línea (cabeceras)
+                string headerLine = reader.ReadLine();
+
+                string line;
+                int batchSize = 10000; // Tamaño del lote para insertar en SQL Server
+                int currentRow = 0;
+
+                while ((line = reader.ReadLine()) != null)
+                {
+                    string[] columns = line.Split(',');
+
+                    // Validar y agregar datos a la tabla en memoria
+                    if (double.TryParse(columns[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double V_in) &&
+                        double.TryParse(columns[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double Measured_RPM) &&
+                        double.TryParse(columns[2], NumberStyles.Float, CultureInfo.InvariantCulture, out double Vibration_1) &&
+                        double.TryParse(columns[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double Vibration_2) &&
+                        double.TryParse(columns[4], NumberStyles.Float, CultureInfo.InvariantCulture, out double Vibration_3))
+                    {
+                        dataTable.Rows.Add(V_in, Measured_RPM, Vibration_1, Vibration_2, Vibration_3);
+                        currentRow++;
+                    }
+
+                    // Insertar los datos en lotes
+                    if (currentRow % batchSize == 0)
+                    {
+                        BulkInsertToSqlServer(dataTable, connectionString, "[4E]");
+                        dataTable.Clear(); // Limpiar la tabla en memoria para el siguiente lote
+                    }
+                }
+
+                // Insertar los datos restantes
+                if (dataTable.Rows.Count > 0)
+                {
+                    BulkInsertToSqlServer(dataTable, connectionString, "[4E]");
+                }
+            }
+
+            Console.WriteLine("Datos importados correctamente.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    // Método para realizar la inserción masiva con SqlBulkCopy
+    static void BulkInsertToSqlServer(DataTable dataTable, string connectionString, string destinationTableName)
+    {
+        using (var connection = new SqlConnection(connectionString))
+        {
+            connection.Open();
+            using (var bulkCopy = new SqlBulkCopy(connection))
+            {
+                bulkCopy.DestinationTableName = destinationTableName;
+                bulkCopy.BatchSize = 10000; // Tamaño del lote para cada operación de inserción
+                bulkCopy.WriteToServer(dataTable);
+            }
+        }
+    }
+}
