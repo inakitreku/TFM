@@ -1,6 +1,6 @@
 # TFM
 
-En este documento no se explican los pasos a seguir para replicar la ejecución del proyecto debido a que preparar el entorno de todas las tecnologías que se emplean este trabajo es un proceso largo y complejo. Sirve a modo de exposición.
+En este documento no se explican los pasos a seguir para replicar la ejecución del proyecto debido a que preparar el entorno de todas las tecnologías que se emplean es un proceso largo y complejo. Sirve a modo de exposición.
 
 Los datos del proyecto se han tomado del siguiente proyecto de Kaggle: https://www.kaggle.com/datasets/jishnukoliyadan/vibration-analysis-on-rotating-shaft/data
 
