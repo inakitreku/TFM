@@ -1,0 +1,67 @@
+# Código para enviar datos de SQL a Kafka (productor de Kafka)
+
+// See https://aka.ms/new-console-template for more information
+using Confluent.Kafka;
+using Microsoft.Data.SqlClient;
+using System.Text.Json;
+using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+
+// Kafka Configuration
+var config = new ProducerConfig
+{
+    BootstrapServers = "localhost:9092",
+    LingerMs = 5,
+    BatchSize = 32768,
+    CompressionType = CompressionType.Snappy,
+    Acks = Acks.All,
+    EnableIdempotence = true
+};
+
+// SQL Server Configuration
+string connectionString = "Server=005-ialdabal\\IÑAKIDB,1433;Database=TFM;User Id=uoc;Password=Ialdabaldetreku12345!;TrustServerCertificate=True;";
+string topic = "sensor-data";
+int batchSize = 4096;  // Collect 4096 samples before sending
+int rateLimit = 1; // 1 batch of 4096 messages per second
+
+using (var producer = new ProducerBuilder<string, string>(config).Build())
+{
+    using (var connection = new SqlConnection(connectionString))
+    {
+        connection.Open();
+        var query = "SELECT Id, V_in, Measured_RPM, Vibration_1, Vibration_2, Vibration_3 FROM dbo.[0E]";
+
+        using (var command = new SqlCommand(query, connection))
+        {
+            using (var reader = command.ExecuteReader())
+            {
+                var batch = new List<Dictionary<string, object>>(); // Batch of 4096 samples
+                while (reader.Read())
+                {
+                    // Collect each row as a dictionary (single row)
+                    var row = new Dictionary<string, object>
+                    {
+                        { "Id", reader["Id"] },
+                        { "V_in", Convert.ToDouble(reader["V_in"]) },
+                        { "Measured_RPM", Convert.ToDouble(reader["Measured_RPM"]) },
+                        { "Vibration_1", Convert.ToDouble(reader["Vibration_1"]) },
+                        { "Vibration_2", Convert.ToDouble(reader["Vibration_2"]) },
+                        { "Vibration_3", Convert.ToDouble(reader["Vibration_3"]) }
+                    };
+
+                    batch.Add(row); // Add the row to the batch
+
+                    if (batch.Count == batchSize) // Once we reach 4096 samples, send them
+                    {
+                        var message = JsonSerializer.Serialize(batch); // Serialize entire batch
+                        await producer.ProduceAsync(topic, new Message<string, string> { Key = Guid.NewGuid().ToString(), Value = message });
+                        batch.Clear(); // Clear the batch
+                        await Task.Delay(1000 / rateLimit); // Optional delay
+                    }
+                }
+            }
+        }
+    }
+}
+
