@@ -9,5 +9,6 @@ En el repositorio se pueden encontrar los archivos de código utilizados para ll
 -Kafka Producer: es el código del proyecto de consola de .net (está escrito en C#) que actúa como productor de Kafka para enviar datos desde SQL Server a Kafka.
 -SQL: es el código del proyecto de consola de .net (está escrito en C#) para hacer el trasvase de datos de los archivos csv a las tablas de SQL Server.
 -modelo_machine_learning.keras: es el modelo machine learning que usa spark en formato .keras.
-
- 
+-Preprocesamiento-Entrenamiento.py: es el archivo de python que se ha desarrollado en Kaggle para preprocesar y entrenar los modelos de entrenamiento.
+-docker-compose.yml: el archivo de configuración de docker donde se ejecutan Kafka y Cassandra.
+-streaming-job.py: archivo que ejecuta Spark para preprocesar los datos que envía Kafka y ejecutar el modelo.
